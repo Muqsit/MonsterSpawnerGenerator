@@ -1,5 +1,5 @@
 # MonsterSpawnerGenerator
-This plugin demonstrates how to create a monster spawner room with a chest in PocketMine-MP. It does this by using a function that takes in a `(seed, chunkX, chunkZ)` as input and outputs a `Vector3|null` spawner position.
+This plugin demonstrates how to write a generator that generates a monster spawner room with a monster spawner and a chest in PocketMine-MP. It does this by using a function that takes in a `(seed, chunkX, chunkZ)` as input and outputs a `Vector3|null` spawner position.
 This method avoids the need for `Generator` and `ChunkPopulateEvent` to exchange arbitrary data.
 
 ## How to use this plugin?
