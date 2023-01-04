@@ -41,7 +41,6 @@ final class LootTable{
 	private int $weight_total;
 
 	/**
-	 * @param Random $random
 	 * @param positive-int $rolls
 	 * @param ItemLootTableEntry[] $entries
 	 */
