@@ -19,10 +19,13 @@ final class MonsterSpawnerGenerator extends Generator{
 
 	public const ROOM_SIZE = 3;
 
+	public static function getRandomGenerator(int $seed, int $chunkX, int $chunkZ) : Random{
+		return new Random(Utils::javaStringHash("{$chunkX}{$chunkZ}{$seed}"));
+	}
+
 	public static function getSpawnerPosition(int $seed, int $chunkX, int $chunkZ) : ?Vector3{
 		// generate unique values for given seed, chunkX, chunkZ
-		$random = new Random(Utils::javaStringHash("{$chunkX}{$chunkZ}{$seed}"));
-
+		$random = self::getRandomGenerator($seed, $chunkX, $chunkZ);
 		return $random->nextFloat() > 0.01 ? null : new Vector3( // 1% chance of generation
 			($chunkX << Chunk::COORD_BIT_SIZE) + $random->nextBoundedInt(16),
 			5 + $random->nextBoundedInt(32),

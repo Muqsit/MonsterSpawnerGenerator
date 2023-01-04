@@ -4,23 +4,34 @@ declare(strict_types=1);
 
 namespace muqsit\monsterspawnergenerator;
 
+use InvalidArgumentException;
+use muqsit\monsterspawnergenerator\loot\LootTable;
 use pocketmine\block\tile\Container;
 use pocketmine\block\tile\Tile;
 use pocketmine\block\tile\TileFactory;
 use pocketmine\block\VanillaBlocks;
 use pocketmine\event\Listener;
 use pocketmine\event\world\ChunkPopulateEvent;
-use pocketmine\item\VanillaItems;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\network\mcpe\protocol\types\entity\EntityIds;
 use pocketmine\plugin\PluginBase;
 use pocketmine\world\generator\GeneratorManager;
+use RuntimeException;
+use Webmozart\PathUtil\Path;
+use function array_push;
 use function assert;
-use function mt_rand;
+use function count;
+use function file_get_contents;
+use function get_debug_type;
+use function is_array;
+use function json_decode;
 
 final class Loader extends PluginBase implements Listener{
 
 	private GeneratorManager $manager;
+
+	/** @var list<LootTable> */
+	private array $loot_table_pools = [];
 
 	protected function onLoad() : void{
 		$this->manager = GeneratorManager::getInstance();
@@ -29,6 +40,17 @@ final class Loader extends PluginBase implements Listener{
 
 	protected function onEnable() : void{
 		$this->getServer()->getPluginManager()->registerEvents($this, $this);
+
+		$this->saveResource("loot_table_monster_room.json");
+		$_loot_table_config = file_get_contents(Path::join($this->getDataFolder(), "loot_table_monster_room.json"));
+		$_loot_table_config !== false || throw new RuntimeException("Failed to retrieve contents of loot table config");
+
+		$loot_table_config = json_decode($_loot_table_config, true, 512, JSON_THROW_ON_ERROR);
+		$loot_table_config["pools"] ?? throw new InvalidArgumentException("Loot table config must have a \"pools\" property");
+		is_array($loot_table_config["pools"]) || throw new InvalidArgumentException("Loot table config \"pools\" must be an array, got " . get_debug_type($loot_table_config["pools"]));
+		foreach($loot_table_config["pools"] as $entry){
+			$this->loot_table_pools[] = LootTable::parse($entry);
+		}
 	}
 
 	protected function onDisable() : void{
@@ -48,7 +70,10 @@ final class Loader extends PluginBase implements Listener{
 			return;
 		}
 
-		$position = MonsterSpawnerGenerator::getSpawnerPosition($world->getSeed(), $event->getChunkX(), $event->getChunkZ());
+		$seed = $world->getSeed();
+		$chunkX = $event->getChunkX();
+		$chunkZ = $event->getChunkZ();
+		$position = MonsterSpawnerGenerator::getSpawnerPosition($seed, $chunkX, $chunkZ);
 		if($position === null){
 			return;
 		}
@@ -76,14 +101,11 @@ final class Loader extends PluginBase implements Listener{
 			return;
 		}
 
+		$random = MonsterSpawnerGenerator::getRandomGenerator($seed, $chunkX, $chunkZ);
 		$items = [];
-		$items[] = VanillaItems::ROTTEN_FLESH()->setCount(mt_rand(1, 3));
-		$items[] = VanillaItems::BONE()->setCount(mt_rand(1, 2));
-		if(mt_rand(1, 4) === 1){
-			$items[] = VanillaItems::IRON_INGOT()->setCount(mt_rand(1, 2));
-		}
-		if(mt_rand(1, 8) === 1){
-			$items[] = VanillaItems::DIAMOND()->setCount(mt_rand(1, 2));
+		$loot_table_pools_c = count($this->loot_table_pools);
+		for($i = 0; $i < 3; ++$i){
+			array_push($items, ...$this->loot_table_pools[$i % $loot_table_pools_c]->generate($random));
 		}
 		$container->getInventory()->addItem(...$items);
 	}
